@@ -87,7 +87,11 @@ def take_input():
                         end_point = ''
                         pygame.event.post(pygame.event.Event(INVALID_INPUT))
 
-                    if origin_tuple and end_tuple:
+                    if origin_tuple == end_tuple:
+                        end_point = ''
+                        pygame.event.post(pygame.event.Event(INVALID_INPUT))
+
+                    elif origin_tuple and end_tuple:
                         return (origin_tuple, end_tuple)
 
                 if event.key == pygame.K_TAB:
