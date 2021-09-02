@@ -23,20 +23,33 @@ def random_color():
     return (r, g, b)
 
 
-class GridPos:
+class GridPos:  # Stores basic data about each square on the grid
     def __repr__(self):
         return f'({self.x}, {self.y})'  # (x, y)
 
     # position: (x, y) #  dimensions: (width, height)
-    def __init__(self, position: tuple, dimensions: tuple):
+    # Requires grid object to find neighbors
+    def __init__(self, position: tuple, dimensions: tuple, grid):
         self.x, self.y = position
         self.width, self.height = dimensions
 
         self.state = "null"
 
+        # Variables used during solve
+        self.g_cost = -1
+        self.h_cost = -1
+        self.f_cost = -1
+        self.open = True
+        self.solve_path = []
+        self.null_neighbors = []
+
+    def update_f_cost(self):
+        self.f_cost = self.g_cost + self.h_cost
+
 
 class Grid:
-    def __init__(self, window, dimensions: tuple):  # dimensions: (width, height)
+    # dimensions: (width, height) # Requires window object to communicate
+    def __init__(self, window, dimensions: tuple):
         self.width, self.height = dimensions
         self.window_width = WIDTH
         self.window_height = HEIGHT
@@ -50,17 +63,17 @@ class Grid:
         self.generate_grid()
         self.assign_positions()
 
-    def generate_grid(self):
+    def generate_grid(self):  # Generates a grid with grid_pos objects in each square
         self.grid = []
 
         for y in range(self.height):
             current_row = []
             for x in range(self.width):
                 current_row.append(
-                    GridPos((x, y), (self.box_width, self.box_height)))
+                    GridPos((x, y), (self.box_width, self.box_height), self))
             self.grid.append(current_row)
 
-    def clean_window(self):
+    def clean_window(self):  # Adjusts the window size so there are no black bars
         self.box_width = self.window_width // self.width
         self.box_height = self.window_height // self.height
 
@@ -75,6 +88,7 @@ class Grid:
             for grid_pos in row:
                 x_pos = grid_pos.x * grid_pos.width
                 y_pos = grid_pos.y * grid_pos.height
+
                 grid_pos.square = pygame.Rect(
                     x_pos, y_pos, grid_pos.width, grid_pos.height)
                 grid_pos.square_border = pygame.Rect(
@@ -97,6 +111,7 @@ class Grid:
 
 
 class Window:
+    # Initialize important variables and send self to other objects
     def __init__(self, dimensions: tuple, start_point: tuple, end_point: tuple):
         self.width, self.height = dimensions
 
@@ -108,69 +123,87 @@ class Window:
         self.grid.set_start_point(start_point)
         self.grid.set_end_point(end_point)
 
-    def main(self):
+    def main(self):  # Where I've chosen to throw everything together
+
+        # Variables to track various states
         self.mouse_down = False
+        self.solve = False
 
         self.run = True
         while self.run:
             self.logic()
 
+            # Reset the board to black at the start of every frame
             self.WIN.fill((0, 0, 0))
 
             self.draw_core()
             self.draw_visuals()
             pygame.display.update()
 
-    def logic(self):
+    def logic(self):  # Where all of the logical operations take place
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
 
-            if event.type == pygame.KEYDOWN:
+            if not self.solve:  # Only allow actions if program is not solving path
+                if event.type == pygame.KEYDOWN:
 
-                if event.key == pygame.K_c:    # Removes all walls from grid
-                    for row in self.grid.get_grid():
-                        for grid_pos in row:
-                            if grid_pos.state == "wall":
-                                grid_pos.state = "null"
-
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                self.mouse_down = True  # Stores left mouse button state
-
-                for row in self.grid.get_grid():  # Loop through all positions to check which square was clicked
-                    for grid_pos in row:
-                        if grid_pos.square.collidepoint(event.pos):
-                            if grid_pos.state == "null":
-                                self.grid.draw_mode = "add"
-                            elif grid_pos.state == "wall":
-                                self.grid.draw_mode = "subtract"
-                        break
-
-            if event.type == pygame.MOUSEBUTTONUP:
-                self.mouse_down = False
-
-        if self.mouse_down:
-            for row in self.grid.get_grid():
-                for grid_pos in row:
-                    if grid_pos.square.collidepoint(pygame.mouse.get_pos()):
-                        if self.grid.last_changed != (grid_pos.x, grid_pos.y):
-                            self.grid.last_changed = (grid_pos.x, grid_pos.y)
-
-                            if self.grid.draw_mode == "add":
-                                if grid_pos.state == "null":
-                                    grid_pos.state = "wall"
-
-                            elif self.grid.draw_mode == "subtract":
+                    if event.key == pygame.K_c:    # Removes all walls from grid
+                        for row in self.grid.get_grid():
+                            for grid_pos in row:
                                 if grid_pos.state == "wall":
                                     grid_pos.state = "null"
 
+                    if event.key == pygame.K_SPACE:
+                        self.solve = True
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self.mouse_down = True  # Stores left mouse button state
+
+                    for row in self.grid.get_grid():  # Loop through all positions to check which square was clicked
+                        for grid_pos in row:
+                            # Choose whether to add or subtract squares based on the first square that was clicked
+                            if grid_pos.square.collidepoint(event.pos):
+                                if grid_pos.state == "null":
+                                    self.grid.draw_mode = "add"
+                                elif grid_pos.state == "wall":
+                                    self.grid.draw_mode = "subtract"
+                            break
+
+                if event.type == pygame.MOUSEBUTTONUP:
+                    self.mouse_down = False
+
+                if self.mouse_down:  # If mouse is held down start drawing
+                    for row in self.grid.get_grid():
+                        for grid_pos in row:
+                            if grid_pos.square.collidepoint(pygame.mouse.get_pos()):
+                                # Only change square state if it wasn't just changed
+                                if self.grid.last_changed != (grid_pos.x, grid_pos.y):
+                                    self.grid.last_changed = (
+                                        grid_pos.x, grid_pos.y)
+
+                                    if self.grid.draw_mode == "add":
+                                        if grid_pos.state == "null":
+                                            grid_pos.state = "wall"
+
+                                    elif self.grid.draw_mode == "subtract":
+                                        if grid_pos.state == "wall":
+                                            grid_pos.state = "null"
+
+        if self.solve:
+            for row in self.grid.get_grid():
+                for grid_pos in row:
+                    if grid_pos.state == "start":
+                        pass
+
+                        # Renders visuals that are not important to the functionality of the program
     def draw_visuals(self):
         for row in self.grid.get_grid():
             for grid_pos in row:
                 pygame.draw.rect(self.WIN, DARK_GREY,
                                  grid_pos.square_border, 1)
 
-    def draw_core(self):
+    def draw_core(self):  # Renders important display eliments
         for row in self.grid.get_grid():
             for grid_pos in row:
                 if grid_pos.state == "null":
@@ -182,27 +215,12 @@ class Window:
                 elif grid_pos.state == "end":
                     pygame.draw.rect(self.WIN, RED, grid_pos.square)
 
-    def adjust_window(self, size: tuple):  # size: (width, height)
+    def adjust_window(self, size: tuple):  # size: (width, height) # Resizes the window
         self.width, self.height = size
 
         pygame.display.set_mode(size)
 
 
-'''if __name__ == '__main__':
-    test = Grid(30, 30)
-    test.generate_grid()
-    for i in test.grid:
-        print(i)'''
-
 start_point, end_point = take_input()
 test = Window((WIDTH, HEIGHT), start_point, end_point)
 test.main()
-
-
-'''try:
-    take_input()
-    Window()
-except Exception as e:
-    print("Program closed unexpectedly")
-    print(e)
-'''
