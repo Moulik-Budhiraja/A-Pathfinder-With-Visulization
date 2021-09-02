@@ -58,6 +58,8 @@ def take_input():
                     origin_tuple = validate(origin_point)
                     end_tuple = validate(end_point)
 
+                    print(origin_tuple, end_tuple)
+
                     if not origin_tuple:
                         origin_point = ''
                         pygame.event.post(pygame.event.Event(INVALID_INPUT))
@@ -66,7 +68,11 @@ def take_input():
                         end_point = ''
                         pygame.event.post(pygame.event.Event(INVALID_INPUT))
 
-                    if origin_tuple and end_tuple:
+                    if origin_tuple == end_tuple:
+                        end_point = ''
+                        pygame.event.post(pygame.event.Event(INVALID_INPUT))
+
+                    elif origin_tuple and end_tuple:
                         return (origin_tuple, end_tuple)
 
             if event.type == pygame.KEYDOWN:
