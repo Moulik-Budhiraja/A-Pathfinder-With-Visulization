@@ -58,8 +58,6 @@ def take_input():
                     origin_tuple = validate(origin_point)
                     end_tuple = validate(end_point)
 
-                    print(origin_tuple, end_tuple)
-
                     if not origin_tuple:
                         origin_point = ''
                         pygame.event.post(pygame.event.Event(INVALID_INPUT))
