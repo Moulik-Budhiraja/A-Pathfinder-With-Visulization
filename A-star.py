@@ -53,7 +53,7 @@ class Grid:
     def generate_grid(self):
         self.grid = []
 
-        for y in range(self.height - 1, -1, -1):
+        for y in range(self.height):
             current_row = []
             for x in range(self.width):
                 current_row.append(
@@ -69,6 +69,7 @@ class Grid:
 
         self.window.adjust_window((new_window_width, new_window_height))
 
+    # Creates pygame rectangle objects and assigns them to the correct places on the grid
     def assign_positions(self):
         for row in self.grid:
             for grid_pos in row:
@@ -79,19 +80,33 @@ class Grid:
                 grid_pos.square_border = pygame.Rect(
                     x_pos, y_pos, grid_pos.width, grid_pos.height)
 
+    def set_start_point(self, position: tuple):
+        for row in self.grid:
+            for grid_pos in row:
+                if position == (grid_pos.x, grid_pos.y):
+                    grid_pos.state = "start"
+
+    def set_end_point(self, position: tuple):
+        for row in self.grid:
+            for grid_pos in row:
+                if position == (grid_pos.x, grid_pos.y):
+                    grid_pos.state = "end"
+
     def get_grid(self):
         return self.grid
 
 
 class Window:
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
+    def __init__(self, dimensions: tuple, start_point: tuple, end_point: tuple):
+        self.width, self.height = dimensions
 
-        self.WIN = pygame.display.set_mode((width, height))
+        self.WIN = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("A* Pathfinding")
 
         self.grid = Grid(self, (30, 30))  # ! Change to variables
+
+        self.grid.set_start_point(start_point)
+        self.grid.set_end_point(end_point)
 
     def main(self):
         self.mouse_down = False
@@ -162,6 +177,10 @@ class Window:
                     pygame.draw.rect(self.WIN, BLACK, grid_pos.square)
                 elif grid_pos.state == "wall":
                     pygame.draw.rect(self.WIN, WHITE, grid_pos.square)
+                elif grid_pos.state == "start":
+                    pygame.draw.rect(self.WIN, GREEN, grid_pos.square)
+                elif grid_pos.state == "end":
+                    pygame.draw.rect(self.WIN, RED, grid_pos.square)
 
     def adjust_window(self, size: tuple):  # size: (width, height)
         self.width, self.height = size
@@ -175,8 +194,8 @@ class Window:
     for i in test.grid:
         print(i)'''
 
-take_input()
-test = Window(WIDTH, HEIGHT)
+start_point, end_point = take_input()
+test = Window((WIDTH, HEIGHT), start_point, end_point)
 test.main()
 
 
