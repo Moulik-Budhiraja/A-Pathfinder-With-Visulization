@@ -27,24 +27,63 @@ class GridPos:  # Stores basic data about each square on the grid
     def __repr__(self):
         return f'({self.x}, {self.y})'  # (x, y)
 
-    # position: (x, y) #  dimensions: (width, height)
+    # Position: (x, y) #  dimensions: (width, height)
     # Requires grid object to find neighbors
     def __init__(self, position: tuple, dimensions: tuple, grid):
         self.x, self.y = position
         self.width, self.height = dimensions
 
+        self.grid = grid
+
         self.state = "null"
 
         # Variables used during solve
-        self.g_cost = -1
-        self.h_cost = -1
-        self.f_cost = -1
+        self.g_cost = None
+        self.h_cost = None
+        self.f_cost = None
         self.open = True
         self.solve_path = []
-        self.null_neighbors = []
+        self.active_neighbors = []
 
-    def update_f_cost(self):
-        self.f_cost = self.g_cost + self.h_cost
+    def get_h_cost(self):  # Gets the direct distance from the current square to the end point
+        # Determine where end point is relitive to current square
+        end_x, end_y = self.grid.end_point
+
+        difference_x = end_x - self.x
+        difference_y = self.y - end_y
+
+        diagonal_dist = min(abs(difference_x), abs(
+            difference_y))  # abs -> absolute value
+        straight_dist = abs(abs(difference_y) - abs(difference_x))
+
+        self.h_cost = diagonal_dist * 14 + straight_dist * 10
+
+        return self.h_cost
+
+    def get_g_cost(self):
+        pass
+
+    def get_f_cost(self):
+        self.get_h_cost()
+        self.get_g_cost()
+
+        try:
+            self.f_cost = self.g_cost + self.h_cost
+        except TypeError:
+            return None
+
+    def get_active_neighbors(self):
+        active_neighbors = []
+        rows = self.grid.get_grid()[self.y - 1: self.y + 2]
+        neighbors = [row[self.x - 1: self.x + 2] for row in rows]
+        neighbors = sum(neighbors, [])  # Combines 3 lists into 1
+
+        neighbors = [
+            neighbor for neighbor in neighbors if neighbor.state == "null" and neighbor.open]
+
+        self.active_neighbors = neighbors
+
+        return neighbors
 
 
 class Grid:
@@ -95,12 +134,16 @@ class Grid:
                     x_pos, y_pos, grid_pos.width, grid_pos.height)
 
     def set_start_point(self, position: tuple):
+        self.start_point = position
+
         for row in self.grid:
             for grid_pos in row:
                 if position == (grid_pos.x, grid_pos.y):
                     grid_pos.state = "start"
 
     def set_end_point(self, position: tuple):
+        self.end_point = position
+
         for row in self.grid:
             for grid_pos in row:
                 if position == (grid_pos.x, grid_pos.y):
@@ -168,10 +211,11 @@ class Window:
                                     self.grid.draw_mode = "add"
                                 elif grid_pos.state == "wall":
                                     self.grid.draw_mode = "subtract"
-                            break
+                                break
 
                 if event.type == pygame.MOUSEBUTTONUP:
                     self.mouse_down = False
+                    self.grid.last_changed = (None, None)
 
                 if self.mouse_down:  # If mouse is held down start drawing
                     for row in self.grid.get_grid():
@@ -191,12 +235,15 @@ class Window:
                                             grid_pos.state = "null"
 
         if self.solve:
-            for row in self.grid.get_grid():
-                for grid_pos in row:
-                    if grid_pos.state == "start":
-                        pass
+            start_x, start_y = self.grid.start_point
+            start_point = self.grid.get_grid()[start_y][start_x]
 
-                        # Renders visuals that are not important to the functionality of the program
+            for neighbor in start_point.get_active_neighbors():
+                neighbor.get_f_cost()
+
+            self.solve = False
+
+    # Renders visuals that are not important to the functionality of the program
     def draw_visuals(self):
         for row in self.grid.get_grid():
             for grid_pos in row:
@@ -221,6 +268,6 @@ class Window:
         pygame.display.set_mode(size)
 
 
-start_point, end_point = take_input()
+start_point, end_point = ((4, 7), (2, 4))  # take_input()
 test = Window((WIDTH, HEIGHT), start_point, end_point)
 test.main()
