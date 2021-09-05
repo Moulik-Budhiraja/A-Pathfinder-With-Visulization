@@ -29,6 +29,7 @@ class GridPos:  # Stores basic data about each square on the grid
 
     # Position: (x, y) #  dimensions: (width, height)
     # Requires grid object to find neighbors
+
     def __init__(self, position: tuple, dimensions: tuple, grid):
         self.x, self.y = position
         self.width, self.height = dimensions
@@ -60,15 +61,59 @@ class GridPos:  # Stores basic data about each square on the grid
 
         return self.h_cost
 
-    def get_g_cost(self):
-        pass
+    def get_g_cost(self, target=None):
+        if target == None:
+            solve_path_positions = [(grid_pos.x, grid_pos.y)
+                                    for grid_pos in self.solve_path]
+
+            last_pos = None
+            self.g_cost = 0
+            for grid_pos in solve_path_positions:
+                if last_pos == None:
+                    last_pos = grid_pos
+                    continue
+
+                last_pos_x, last_pos_y = last_pos
+                grid_pos_x, grid_pos_y = grid_pos
+
+                if last_pos_x != grid_pos_x and last_pos_y != grid_pos_y:
+                    self.g_cost += 14
+                else:
+                    self.g_cost += 10
+
+                last_pos = grid_pos
+
+            return self.g_cost
+
+        else:
+            solve_path_positions = [(grid_pos.x, grid_pos.y)
+                                    for grid_pos in target.solve_path]
+
+            last_pos = None
+            g_cost = 0
+            for grid_pos in solve_path_positions:
+                if last_pos == None:
+                    last_pos = grid_pos
+                    continue
+
+                last_pos_x, last_pos_y = last_pos
+                grid_pos_x, grid_pos_y = grid_pos
+
+                if last_pos_x != grid_pos_x and last_pos_y != grid_pos_y:
+                    g_cost += 14
+                else:
+                    g_cost += 10
+
+                last_pos = grid_pos
+
+            return g_cost
 
     def get_f_cost(self):
         self.get_h_cost()
-        self.get_g_cost()
 
         try:
             self.f_cost = self.g_cost + self.h_cost
+            return self.f_cost
         except TypeError:
             return None
 
@@ -79,11 +124,27 @@ class GridPos:  # Stores basic data about each square on the grid
         neighbors = sum(neighbors, [])  # Combines 3 lists into 1
 
         neighbors = [
-            neighbor for neighbor in neighbors if neighbor.state == "null" and neighbor.open]
+            neighbor for neighbor in neighbors if neighbor.state == "null"]
+
+        for neighbor in neighbors:
+            self.set_solve_path(neighbor)
+            neighbor.get_g_cost()
 
         self.active_neighbors = neighbors
 
         return neighbors
+
+    def set_solve_path(self, target):
+        if target.solve_path == []:
+            target.solve_path = self.solve_path + [self] + [target]
+            print(target.solve_path)
+            '''target.solve_path += [self]
+            target.solve_path += [target]'''
+        else:
+            new_path = self.solve_path
+            new_path.append(self)
+            if target.g_cost > self.get_g_cost(new_path):
+                target.solve_path = new_path
 
 
 class Grid:
@@ -238,8 +299,10 @@ class Window:
             start_x, start_y = self.grid.start_point
             start_point = self.grid.get_grid()[start_y][start_x]
 
+            print(start_point.x, start_point.y)
+
             for neighbor in start_point.get_active_neighbors():
-                neighbor.get_f_cost()
+                print(f'({neighbor.x}, {neighbor.y}) {neighbor.g_cost}')
 
             self.solve = False
 
