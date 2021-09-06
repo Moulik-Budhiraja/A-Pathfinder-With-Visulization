@@ -13,6 +13,7 @@ WHITE = (255, 255, 255)
 DARK_GREY = (64, 64, 64)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+BLUE = (0, 0, 255)
 
 
 def random_color():
@@ -42,7 +43,7 @@ class GridPos:  # Stores basic data about each square on the grid
         self.g_cost = None
         self.h_cost = None
         self.f_cost = None
-        self.open = True
+        self.open = "null"  # null, open or closed
         self.solve_path = []
         self.active_neighbors = []
 
@@ -87,7 +88,7 @@ class GridPos:  # Stores basic data about each square on the grid
 
         else:
             solve_path_positions = [(grid_pos.x, grid_pos.y)
-                                    for grid_pos in target.solve_path]
+                                    for grid_pos in self.solve_path]
 
             last_pos = None
             g_cost = 0
@@ -124,11 +125,13 @@ class GridPos:  # Stores basic data about each square on the grid
         neighbors = sum(neighbors, [])  # Combines 3 lists into 1
 
         neighbors = [
-            neighbor for neighbor in neighbors if neighbor.state == "null"]
+            neighbor for neighbor in neighbors if (neighbor.state == "null" or neighbor.state == "end") and neighbor.open != "closed"]
 
         for neighbor in neighbors:
             self.set_solve_path(neighbor)
             neighbor.get_g_cost()
+            neighbor.get_f_cost()
+            neighbor.open = "open"
 
         self.active_neighbors = neighbors
 
@@ -136,13 +139,9 @@ class GridPos:  # Stores basic data about each square on the grid
 
     def set_solve_path(self, target):
         if target.solve_path == []:
-            target.solve_path = self.solve_path + [self] + [target]
-            print(target.solve_path)
-            '''target.solve_path += [self]
-            target.solve_path += [target]'''
+            target.solve_path = self.solve_path + [target]
         else:
-            new_path = self.solve_path
-            new_path.append(self)
+            new_path = self.solve_path + [target]
             if target.g_cost > self.get_g_cost(new_path):
                 target.solve_path = new_path
 
@@ -201,6 +200,10 @@ class Grid:
             for grid_pos in row:
                 if position == (grid_pos.x, grid_pos.y):
                     grid_pos.state = "start"
+                    grid_pos.open = "open"
+                    grid_pos.solve_path.append(grid_pos)
+                    grid_pos.get_g_cost()
+                    grid_pos.get_f_cost()
 
     def set_end_point(self, position: tuple):
         self.end_point = position
@@ -224,8 +227,8 @@ class Window:
 
         self.grid = Grid(self, (30, 30))  # ! Change to variables
 
-        self.grid.set_start_point(start_point)
         self.grid.set_end_point(end_point)
+        self.grid.set_start_point(start_point)
 
     def main(self):  # Where I've chosen to throw everything together
 
@@ -299,12 +302,52 @@ class Window:
             start_x, start_y = self.grid.start_point
             start_point = self.grid.get_grid()[start_y][start_x]
 
-            print(start_point.x, start_point.y)
+            open_positions = {start_point}
 
-            for neighbor in start_point.get_active_neighbors():
-                print(f'({neighbor.x}, {neighbor.y}) {neighbor.g_cost}')
+            while self.solve:
 
-            self.solve = False
+                open_positions_cost = {}
+
+                for position in open_positions:
+                    if position.f_cost in open_positions_cost:
+                        if position.h_cost < open_positions_cost[position.f_cost].h_cost:
+                            open_positions_cost[position.f_cost] = position
+                        continue
+                    open_positions_cost[position.f_cost] = position
+
+                for row in self.grid.get_grid():
+                    for grid_pos in row:
+                        if grid_pos.open == "closed":
+                            pygame.draw.rect(self.WIN, BLUE, grid_pos.square)
+                        elif grid_pos.open == "open":
+                            pygame.draw.rect(
+                                self.WIN, (128, 0, 128), grid_pos.square)
+
+                pygame.display.update()
+
+                best_pos = min(open_positions_cost.keys())
+
+                best_pos = open_positions_cost[best_pos]
+
+                print(best_pos.solve_path, "\n")
+
+                if best_pos.h_cost == 0:
+                    self.solve = False
+                    self.solution = best_pos.solve_path
+                    break
+
+                best_pos.get_active_neighbors()
+
+                best_pos.open = "closed"
+
+                open_positions = set(
+                    [grid_pos for row in self.grid.get_grid() for grid_pos in row if grid_pos.open == "open"])
+
+            '''for neighbor in start_point.get_active_neighbors():
+                print(neighbor.solve_path, neighbor.f_cost,
+                      neighbor.g_cost, neighbor.h_cost)
+
+            self.solve = False'''
 
     # Renders visuals that are not important to the functionality of the program
     def draw_visuals(self):
@@ -324,6 +367,14 @@ class Window:
                     pygame.draw.rect(self.WIN, GREEN, grid_pos.square)
                 elif grid_pos.state == "end":
                     pygame.draw.rect(self.WIN, RED, grid_pos.square)
+
+        try:
+            for position in self.solution:
+                if position.state != "start" and position.state != "end":
+                    pygame.draw.rect(self.WIN, BLUE, position.square)
+
+        except Exception:
+            pass
 
     def adjust_window(self, size: tuple):  # size: (width, height) # Resizes the window
         self.width, self.height = size
