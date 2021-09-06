@@ -37,13 +37,21 @@ class GridPos:  # Stores basic data about each square on the grid
 
         self.grid = grid
 
-        self.state = "null"
+        self.state = "null"  # null, wall, start or end
 
-        # Variables used during solve
+        # Variables used only during solve
         self.g_cost = None
         self.h_cost = None
         self.f_cost = None
         self.open = "null"  # null, open or closed
+        self.solve_path = []
+        self.active_neighbors = []
+
+    def clear(self):  # Resets all variables to their original state
+        self.g_cost = None
+        self.h_cost = None
+        self.f_cost = None
+        self.open = "null"
         self.solve_path = []
         self.active_neighbors = []
 
@@ -261,6 +269,8 @@ class Window:
                                 if grid_pos.state == "wall":
                                     grid_pos.state = "null"
 
+                        self.solution = []
+
                     if event.key == pygame.K_SPACE:
                         self.solve = True
 
@@ -325,7 +335,17 @@ class Window:
 
                 pygame.display.update()
 
-                best_pos = min(open_positions_cost.keys())
+                try:
+                    best_pos = min(open_positions_cost.keys())
+                except ValueError:
+                    print("position not solvable")
+
+                    for row in self.grid.get_grid():
+                        for grid_pos in row:
+                            grid_pos.clear()
+
+                    self.solve = False
+                    break
 
                 best_pos = open_positions_cost[best_pos]
 
@@ -334,6 +354,10 @@ class Window:
                 if best_pos.h_cost == 0:
                     self.solve = False
                     self.solution = best_pos.solve_path
+
+                    for row in self.grid.get_grid():
+                        for grid_pos in row:
+                            grid_pos.clear()
                     break
 
                 best_pos.get_active_neighbors()
@@ -370,7 +394,7 @@ class Window:
 
         try:
             for position in self.solution:
-                if position.state != "start" and position.state != "end":
+                if position.state != "start" and position.state != "end" and position.state != "wall":
                     pygame.draw.rect(self.WIN, BLUE, position.square)
 
         except Exception:
@@ -382,6 +406,6 @@ class Window:
         pygame.display.set_mode(size)
 
 
-start_point, end_point = ((4, 7), (2, 4))  # take_input()
+start_point, end_point = (take_input())
 test = Window((WIDTH, HEIGHT), start_point, end_point)
 test.main()
