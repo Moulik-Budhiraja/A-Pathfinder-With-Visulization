@@ -34,7 +34,7 @@ Once you have choosen the options you would like click "Submit" or push the `Ent
 
 Now you can define barriers you want the algorithm to avoid. To do so click and drag with your mouse on the grid.
 
-![Find Path](/assets/Find-Path.png)
+![Find Path](/assets/Find-path.png)
 
 Once you are ready to start pathfinding push `Space`.
 
