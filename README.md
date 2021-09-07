@@ -31,6 +31,7 @@ Custom grid sizes are not yet supported so the coordinates have to be in between
 Once you have choosen the options you would like click "Submit" or push the `Enter` key on your keyboard.
 
 ![Draw Barriers](/assets/Draw-barriers.png)
+
 Now you can define barriers you want the algorithm to avoid. To do so click and drag with your mouse on the grid.
 
 ![Find Path](/assets/Find-Path.png)
