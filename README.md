@@ -15,8 +15,17 @@ This project requires pygame to be installed which can be done with one of the f
 
 ```
 pip install pygame
+```
+
+```
 pip3 install pygame
+```
+
+```
 python -m pip install pygame
+```
+
+```
 python3 -m pip install pygame
 ```
 
