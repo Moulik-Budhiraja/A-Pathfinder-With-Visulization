@@ -128,8 +128,21 @@ class GridPos:  # Stores basic data about each square on the grid
 
     def get_active_neighbors(self):
         active_neighbors = []
-        rows = self.grid.get_grid()[self.y - 1: self.y + 2]
-        neighbors = [row[self.x - 1: self.x + 2] for row in rows]
+
+        if self.y - 1 >= 0 and self.y + 2 <= 29:
+            rows = self.grid.get_grid()[self.y - 1: self.y + 2]
+        elif self.y - 1 < 0:
+            rows = self.grid.get_grid()[self.y: self.y + 2]
+        else:
+            rows = self.grid.get_grid()[self.y - 1: self.y + 2]
+
+        if self.x - 1 >= 0 and self.x + 2 <= 29:
+            neighbors = [row[self.x - 1: self.x + 2] for row in rows]
+        elif self.x - 1 < 0:
+            neighbors = [row[self.x: self.x + 2] for row in rows]
+        else:
+            neighbors = [row[self.x - 1: self.x + 2] for row in rows]
+
         neighbors = sum(neighbors, [])  # Combines 3 lists into 1
 
         neighbors = [
@@ -227,7 +240,7 @@ class Grid:
 
 class Window:
     # Initialize important variables and send self to other objects
-    def __init__(self, dimensions: tuple, start_point: tuple, end_point: tuple):
+    def __init__(self, dimensions: tuple, start_point: tuple, end_point: tuple, visualize):
         self.width, self.height = dimensions
 
         self.WIN = pygame.display.set_mode((self.width, self.height))
@@ -237,6 +250,8 @@ class Window:
 
         self.grid.set_end_point(end_point)
         self.grid.set_start_point(start_point)
+
+        self.visualize = visualize
 
     def main(self):  # Where I've chosen to throw everything together
 
@@ -309,13 +324,32 @@ class Window:
                                             grid_pos.state = "null"
 
         if self.solve:
+            self.solution = []  # reset previous solution
+
             start_x, start_y = self.grid.start_point
+            # Find the start_point object based on its coordinates
             start_point = self.grid.get_grid()[start_y][start_x]
 
+            # positions that are currently being evaluated
             open_positions = {start_point}
 
             while self.solve:
 
+                if self.visualize:
+                    for row in self.grid.get_grid():
+                        for grid_pos in row:
+                            if grid_pos.open == "closed":
+                                pygame.draw.rect(
+                                    self.WIN, BLUE, grid_pos.square)
+                            elif grid_pos.open == "open":
+                                pygame.draw.rect(
+                                    self.WIN, (128, 0, 128), grid_pos.square)
+
+                    pygame.display.update()
+
+                    time.sleep(0.02)
+
+                # costs of the object pointing to the object itself to make comparing easier
                 open_positions_cost = {}
 
                 for position in open_positions:
@@ -324,16 +358,6 @@ class Window:
                             open_positions_cost[position.f_cost] = position
                         continue
                     open_positions_cost[position.f_cost] = position
-
-                for row in self.grid.get_grid():
-                    for grid_pos in row:
-                        if grid_pos.open == "closed":
-                            pygame.draw.rect(self.WIN, BLUE, grid_pos.square)
-                        elif grid_pos.open == "open":
-                            pygame.draw.rect(
-                                self.WIN, (128, 0, 128), grid_pos.square)
-
-                pygame.display.update()
 
                 try:
                     best_pos = min(open_positions_cost.keys())
@@ -348,8 +372,6 @@ class Window:
                     break
 
                 best_pos = open_positions_cost[best_pos]
-
-                print(best_pos.solve_path, "\n")
 
                 if best_pos.h_cost == 0:
                     self.solve = False
@@ -367,13 +389,8 @@ class Window:
                 open_positions = set(
                     [grid_pos for row in self.grid.get_grid() for grid_pos in row if grid_pos.open == "open"])
 
-            '''for neighbor in start_point.get_active_neighbors():
-                print(neighbor.solve_path, neighbor.f_cost,
-                      neighbor.g_cost, neighbor.h_cost)
-
-            self.solve = False'''
-
     # Renders visuals that are not important to the functionality of the program
+
     def draw_visuals(self):
         for row in self.grid.get_grid():
             for grid_pos in row:
@@ -406,6 +423,6 @@ class Window:
         pygame.display.set_mode(size)
 
 
-start_point, end_point = (take_input())
-test = Window((WIDTH, HEIGHT), start_point, end_point)
+start_point, end_point, visualize = take_input()
+test = Window((WIDTH, HEIGHT), start_point, end_point, visualize)
 test.main()
