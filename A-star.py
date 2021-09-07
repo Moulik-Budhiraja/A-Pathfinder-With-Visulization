@@ -214,6 +214,7 @@ class Grid:
                 grid_pos.square_border = pygame.Rect(
                     x_pos, y_pos, grid_pos.width, grid_pos.height)
 
+    # sets the start point and other variables that are unique to it
     def set_start_point(self, position: tuple):
         self.start_point = position
 
@@ -226,6 +227,7 @@ class Grid:
                     grid_pos.get_g_cost()
                     grid_pos.get_f_cost()
 
+    # sets the end point and other variables that are unique to it
     def set_end_point(self, position: tuple):
         self.end_point = position
 
@@ -234,7 +236,7 @@ class Grid:
                 if position == (grid_pos.x, grid_pos.y):
                     grid_pos.state = "end"
 
-    def get_grid(self):
+    def get_grid(self):  # returns grid
         return self.grid
 
 
@@ -335,7 +337,7 @@ class Window:
 
             while self.solve:
 
-                if self.visualize:
+                if self.visualize:  # visualization code which only runs when visualize is active
                     for row in self.grid.get_grid():
                         for grid_pos in row:
                             if grid_pos.open == "closed":
@@ -352,6 +354,8 @@ class Window:
                 # costs of the object pointing to the object itself to make comparing easier
                 open_positions_cost = {}
 
+                # if two different positions have the same f-cost
+                # only use the one with the lower h-cost
                 for position in open_positions:
                     if position.f_cost in open_positions_cost:
                         if position.h_cost < open_positions_cost[position.f_cost].h_cost:
@@ -360,8 +364,10 @@ class Window:
                     open_positions_cost[position.f_cost] = position
 
                 try:
+                    # find the position with the lowest f-cost
                     best_pos = min(open_positions_cost.keys())
                 except ValueError:
+                    # if there are not open positions than the current layout is not solvable
                     print("position not solvable")
 
                     for row in self.grid.get_grid():
@@ -371,21 +377,24 @@ class Window:
                     self.solve = False
                     break
 
+                # set best_pos to be a grid_pos object insted of a key pointing to one
                 best_pos = open_positions_cost[best_pos]
 
-                if best_pos.h_cost == 0:
+                if best_pos.h_cost == 0:  # checks if path has been found
                     self.solve = False
                     self.solution = best_pos.solve_path
 
-                    for row in self.grid.get_grid():
+                    for row in self.grid.get_grid():  # resets all variables for each position
                         for grid_pos in row:
                             grid_pos.clear()
                     break
 
+                # finds all avaiable positions near the best position
                 best_pos.get_active_neighbors()
 
-                best_pos.open = "closed"
+                best_pos.open = "closed"  # close current position so it is not evaluated again
 
+                # find all open positions
                 open_positions = set(
                     [grid_pos for row in self.grid.get_grid() for grid_pos in row if grid_pos.open == "open"])
 
